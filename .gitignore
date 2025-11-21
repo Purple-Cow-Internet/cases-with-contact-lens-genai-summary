@@ -1,0 +1,21 @@
+source-code.zip
+
+# Node dependencies
+node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependency/lock files (kept if you prefer committing them)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+pnpm-lock.yml
+
+# Environment files
+.env
+.env.local
+.env.*.local
+

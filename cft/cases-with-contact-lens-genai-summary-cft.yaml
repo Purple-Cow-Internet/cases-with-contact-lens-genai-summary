@@ -12,6 +12,10 @@ Parameters:
   ConnectContactLensS3Bucket:
     Type: String
     Description: Connect Contact Lens S3 Bucket Location
+  ContactLensKmsKeyArn:
+    Type: String
+    Default: ""
+    Description: "(Optional) KMS key ARN used to encrypt Contact Lens S3 objects. Leave blank if the bucket is not using SSE-KMS."
 
 #######################
 # Globals
@@ -97,6 +101,16 @@ Resources:
                 Resource: 
                   - !Sub 'arn:aws:s3:::${ConnectContactLensS3Bucket}'
                   - !Sub 'arn:aws:s3:::${ConnectContactLensS3Bucket}/*'
+        - PolicyName: kms-decrypt-contact-lens
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'kms:Decrypt'
+                  - 'kms:GenerateDataKey'
+                Resource:
+                  - !Ref ContactLensKmsKeyArn
       ManagedPolicyArns: 
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 

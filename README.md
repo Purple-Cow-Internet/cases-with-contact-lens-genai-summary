@@ -27,20 +27,70 @@ Step 2: Amazon Connect writes Contact Lens file to Amazon S3, which contains a p
 ## Walkthrough
 
 1.  Download the content [here](https://github.com/aws-samples/cases-with-contact-lens-genai-summary/archive/refs/heads/main.zip) and unzip.
-2.  Go inside source-code folder and Run "npm install"
-3.  Zip the contents of source-code folder with name source-code.zip
-4.	Create a new S3 solution bucket in your AWS account.
-5.	Upload the source-code zip file (step 3) into S3 Bucket (step 4).
-6.	Run the CFT located [here](cft/cases-with-contact-lens-genai-summary-cft.yaml).
-7.	Following parameters needed for the CFT:
-    1.	ConnectContactLensS3Bucket: Copy the Data storage S3 bucket from the Amazon Connect instance.
-    2.	CasesDomainId: Copy the case domain ID from the Amazon Connect instance.
-    3.	SolutionSourceBucket: Solution bucket name created in step 4
+2.  Run the preparation script from the root directory to install dependencies and create the source-code.zip file:
+
+   ```bash
+   ./prepare-source-code.sh
+   ```
+
+   This script will:
+   - Install npm dependencies in the source-code folder
+   - Create source-code.zip containing the source-code folder contents
+4.	Create a new S3 solution bucket in your AWS account. For example, using the AWS CLI in region `ca-central-1`:
+
+   ```bash
+   aws s3api create-bucket \
+     --bucket cases-contact-lens-genai-solution-[env] \
+     --region ca-central-1 \
+     --create-bucket-configuration LocationConstraint=ca-central-1 \
+     --profile <your-aws-profile-name>
+   ```
+
+5.	Upload the source-code zip file (created in step 2) into S3 Bucket (step 4). Run the upload script from the root directory:
+
+   ```bash
+   ./upload-source-code.sh [env] [profile]
+   ```
+
+   Replace `[env]` with your environment (e.g., `dev`, `qa`, `prod`) and `[profile]` with your AWS profile name (optional if using default profile).
+
+   Example:
+   ```bash
+   ./upload-source-code.sh dev my-aws-profile
+   ```
+6-7.	Deploy the CloudFormation stack. Run the deployment script from the root directory:
+
+   ```bash
+   ./deploy-stack.sh [stack-name] [env] [connect-contact-lens-bucket] [cases-domain-id] [kms-key-arn] [profile] [region]
+   ```
+
+   Parameters:
+   - `stack-name`: Name for the CloudFormation stack
+   - `env`: Environment (e.g., `dev`, `qa`, `prod`) - used to construct the solution bucket name
+   - `connect-contact-lens-bucket`: Data storage S3 bucket from the Amazon Connect instance
+   - `cases-domain-id`: Case domain ID from the Amazon Connect instance
+   - `kms-key-arn`: (Optional) KMS key ARN used to encrypt Contact Lens S3 objects. Use `""` if your bucket is not using SSE-KMS.
+   - `profile`: AWS profile name (optional, if using default profile)
+   - `region`: AWS region (optional, defaults to `ca-central-1`)
+
+   Example:
+   ```bash
+   # With KMS-encrypted Contact Lens bucket
+   ./deploy-stack.sh connect-cases-ai-summary-stack dev my-connect-bucket-123456 domain-1234567890 arn:aws:kms:ca-central-1:123456789012:key/abcd-efgh my-aws-profile
+
+   # Without SSE-KMS on the Contact Lens bucket
+   ./deploy-stack.sh connect-cases-ai-summary-stack dev my-connect-bucket-123456 domain-1234567890 "" my-aws-profile
+   ```
+
+   This script will deploy the CloudFormation template with the required parameters:
+   - `SolutionSourceBucket`: Automatically set to `cases-contact-lens-genai-solution-[env]`
+   - `ConnectContactLensS3Bucket`: The Connect Contact Lens S3 bucket you provide
+   - `CasesDomainId`: The Cases domain ID you provide
 
 ![CloudFormation Template Screenshot](images/cft-screenshot2.png?raw=true)
 
 8.	Once CloudFormation execution is successful, configure the Amazon S3 event.
-    1. Navigate to Amazon Connect S3 data store bucket (step 7.1)
+    1. Navigate to Amazon Connect S3 data store bucket (the ConnectContactLensS3Bucket parameter from step 6-7)
 
     2. Click on Properties
 ![Properties](images/b-s3Bucket.png?raw=true)
@@ -80,10 +130,10 @@ Step 2: Amazon Connect writes Contact Lens file to Amazon S3, which contains a p
     Screenshot example below
 ![Properties](images/d-eventname.png?raw=true)
 
-    5. Select Put under vent types
+    5. Select Put under event types
 ![Properties](images/e-eventtype.png?raw=true)
 
-    6. Under the destination, select Lambda function and specific the AWS lambda function name “<stackname>-CasesEventFunction”
+    6. Under the destination, select **Lambda function** and choose the AWS Lambda function named “`<stackname>-S3EventLambda`”
 ![Properties](images/f-destination.png?raw=true)
 
 ## Validate
